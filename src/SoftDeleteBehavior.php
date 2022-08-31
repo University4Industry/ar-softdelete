@@ -13,6 +13,7 @@ use yii\base\ModelEvent;
 use yii\db\ActiveRecord;
 use yii\db\BaseActiveRecord;
 use yii\db\StaleObjectException;
+use yii\db\Transaction;
 
 /**
  * SoftDeleteBehavior provides support for "soft" delete of ActiveRecord models as well as restoring them
@@ -66,20 +67,20 @@ class SoftDeleteBehavior extends Behavior
      * @event ModelEvent an event that is triggered before deleting a record.
      * You may set {@see ModelEvent::$isValid} to be false to stop the deletion.
      */
-    const EVENT_BEFORE_SOFT_DELETE = 'beforeSoftDelete';
+    public const EVENT_BEFORE_SOFT_DELETE = 'beforeSoftDelete';
     /**
      * @event Event an event that is triggered after a record is deleted.
      */
-    const EVENT_AFTER_SOFT_DELETE = 'afterSoftDelete';
+    public const EVENT_AFTER_SOFT_DELETE = 'afterSoftDelete';
     /**
      * @event ModelEvent an event that is triggered before record is restored from "deleted" state.
      * You may set {@see ModelEvent::$isValid} to be false to stop the restoration.
      */
-    const EVENT_BEFORE_RESTORE = 'beforeRestore';
+    public const EVENT_BEFORE_RESTORE = 'beforeRestore';
     /**
      * @event Event an event that is triggered after a record is restored from "deleted" state.
      */
-    const EVENT_AFTER_RESTORE = 'afterRestore';
+    public const EVENT_AFTER_RESTORE = 'afterRestore';
 
     /**
      * @var array values of the owner attributes, which should be applied on soft delete, in format: [attributeName => attributeValue].
@@ -101,19 +102,19 @@ class SoftDeleteBehavior extends Behavior
      * ['isDeleted' => function ($model) {return time()}]
      * ```
      */
-    public $softDeleteAttributeValues = [
+    public array $softDeleteAttributeValues = [
         'isDeleted' => true
     ];
     /**
      * @var array|null values of the owner attributes, which should be applied on restoration from "deleted" state,
      * in format: `[attributeName => attributeValue]`. If not set value will be automatically detected from {@see softDeleteAttributeValues}.
      */
-    public $restoreAttributeValues;
+    public ?array $restoreAttributeValues;
     /**
      * @var bool whether to invoke owner {@see BaseActiveRecord::beforeDelete()} and {@see BaseActiveRecord::afterDelete()}
      * while performing soft delete. This option affects only {@see softDelete()} method.
      */
-    public $invokeDeleteEvents = true;
+    public bool $invokeDeleteEvents = true;
     /**
      * @var callable|null callback, which execution determines if record should be "hard" deleted instead of being marked
      * as deleted. Callback should match following signature: `bool function(BaseActiveRecord $model)`
@@ -134,19 +135,19 @@ class SoftDeleteBehavior extends Behavior
      * will cause soft-delete fallback on any error during regular deleting.
      * @see safeDelete()
      */
-    public $deleteFallbackException = 'yii\db\IntegrityException';
+    public string $deleteFallbackException = \yii\db\IntegrityException::class;
 
     /**
      * @var bool whether to perform soft delete instead of regular delete.
      * If enabled {@see BaseActiveRecord::delete()} will perform soft deletion instead of actual record deleting.
      */
-    private $_replaceRegularDelete = false;
+    private bool $_replaceRegularDelete = false;
 
     /**
      * @var bool whether to use {@see restoreAttributeValues} as defaults on record insertion.
      * @since 1.0.4
      */
-    private $_useRestoreAttributeValuesAsDefaults = false;
+    private bool $_useRestoreAttributeValuesAsDefaults = false;
 
 
     /**
@@ -175,7 +176,7 @@ class SoftDeleteBehavior extends Behavior
      * @return bool whether to use {@see restoreAttributeValues} as defaults on record insertion.
      * @since 1.0.4
      */
-    public function getUseRestoreAttributeValuesAsDefaults()
+    public function getUseRestoreAttributeValuesAsDefaults(): bool
     {
         return $this->_useRestoreAttributeValuesAsDefaults;
     }
@@ -184,7 +185,7 @@ class SoftDeleteBehavior extends Behavior
      * @param bool $useRestoreAttributeValuesAsDefaults whether to use {@see restoreAttributeValues} as defaults on record insertion.
      * @since 1.0.4
      */
-    public function setUseRestoreAttributeValuesAsDefaults($useRestoreAttributeValuesAsDefaults)
+    public function setUseRestoreAttributeValuesAsDefaults(bool $useRestoreAttributeValuesAsDefaults)
     {
         $this->_useRestoreAttributeValuesAsDefaults = $useRestoreAttributeValuesAsDefaults;
 
@@ -202,7 +203,7 @@ class SoftDeleteBehavior extends Behavior
      * @throws StaleObjectException if optimistic locking is enabled and the data being updated is outdated.
      * @throws \Throwable in case soft delete failed in transactional mode.
      */
-    public function softDelete()
+    public function softDelete(): int|false
     {
         if ($this->isDeleteAllowed()) {
             return $this->owner->delete();
@@ -250,7 +251,7 @@ class SoftDeleteBehavior extends Behavior
      * @return int|false the number of rows marked as deleted, or false if the soft deletion is unsuccessful for some reason.
      * @throws StaleObjectException if optimistic locking is enabled and the data being updated is outdated.
      */
-    protected function softDeleteInternal()
+    protected function softDeleteInternal(): int|false
     {
         $result = false;
         if ($this->beforeSoftDelete()) {
@@ -273,7 +274,7 @@ class SoftDeleteBehavior extends Behavior
      * The default implementation raises the {@see EVENT_BEFORE_SOFT_DELETE} event.
      * @return bool whether the record should be deleted. Defaults to true.
      */
-    public function beforeSoftDelete()
+    public function beforeSoftDelete(): bool
     {
         if (method_exists($this->owner, 'beforeSoftDelete')) {
             if (!$this->owner->beforeSoftDelete()) {
@@ -320,7 +321,7 @@ class SoftDeleteBehavior extends Behavior
      * @throws StaleObjectException if optimistic locking is enabled and the data being updated is outdated.
      * @throws \Throwable in case restore failed in transactional mode.
      */
-    public function restore()
+    public function restore(): int|false
     {
         $restoreCallback = function () {
             $result = false;
@@ -360,7 +361,7 @@ class SoftDeleteBehavior extends Behavior
      * @throws InvalidConfigException on invalid configuration.
      * @throws StaleObjectException if optimistic locking is enabled and the data being updated is outdated.
      */
-    protected function restoreInternal()
+    protected function restoreInternal(): int
     {
         $restoreAttributeValues = $this->detectRestoreAttributeValues();
 
@@ -380,7 +381,7 @@ class SoftDeleteBehavior extends Behavior
      * The default implementation raises the {@see EVENT_BEFORE_RESTORE} event.
      * @return bool whether the record should be restored. Defaults to `true`.
      */
-    public function beforeRestore()
+    public function beforeRestore(): bool
     {
         if (method_exists($this->owner, 'beforeRestore')) {
             if (!$this->owner->beforeRestore()) {
@@ -415,7 +416,7 @@ class SoftDeleteBehavior extends Behavior
      * @return false|int number of affected rows.
      * @throws \Throwable on failure.
      */
-    public function safeDelete()
+    public function safeDelete(): false|int
     {
         try {
             $transaction = $this->beginTransaction();
@@ -449,7 +450,7 @@ class SoftDeleteBehavior extends Behavior
      * @return bool whether the specified operation is transactional in the current owner scenario.
      * @since 1.0.2
      */
-    private function isTransactional($operation)
+    private function isTransactional($operation): bool
     {
         if (!$this->owner->hasMethod('isTransactional')) {
             return false;
@@ -460,9 +461,9 @@ class SoftDeleteBehavior extends Behavior
 
     /**
      * Begins new database transaction if owner allows it.
-     * @return \yii\db\Transaction|null transaction instance or `null` if not available.
+     * @return Transaction|null transaction instance or `null` if not available.
      */
-    private function beginTransaction()
+    private function beginTransaction(): Transaction|null
     {
         $db = $this->owner->getDb();
         if ($db->hasMethod('beginTransaction')) {
@@ -478,7 +479,7 @@ class SoftDeleteBehavior extends Behavior
      * @throws StaleObjectException if optimistic locking is enabled and the data being updated is outdated.
      * @since 1.0.2
      */
-    private function updateAttributes(array $attributes)
+    private function updateAttributes(array $attributes): int
     {
         $owner = $this->owner;
 
@@ -511,7 +512,7 @@ class SoftDeleteBehavior extends Behavior
      * @throws InvalidConfigException if unable to detect restore attribute values.
      * @since 1.0.4
      */
-    private function detectRestoreAttributeValues()
+    private function detectRestoreAttributeValues(): array
     {
         if ($this->restoreAttributeValues !== null) {
             return $this->restoreAttributeValues;
@@ -532,7 +533,7 @@ class SoftDeleteBehavior extends Behavior
             } elseif (!is_scalar($value) && is_callable($value)) {
                 $restoreValue = null;
             } else {
-                throw new InvalidConfigException('Unable to automatically determine restore attribute values, "' . get_class($this) . '::$restoreAttributeValues" should be explicitly set.');
+                throw new InvalidConfigException('Unable to automatically determine restore attribute values, "' . $this::class . '::$restoreAttributeValues" should be explicitly set.');
             }
             $restoreAttributeValues[$name] = $restoreValue;
         }

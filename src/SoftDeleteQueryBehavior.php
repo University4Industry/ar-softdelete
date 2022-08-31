@@ -111,11 +111,11 @@ class SoftDeleteQueryBehavior extends Behavior
     /**
      * @var array filter condition for 'soft-deleted' records.
      */
-    private $_deletedCondition;
+    private ?array $_deletedCondition = null;
     /**
      * @var array filter condition for not 'soft-deleted' records.
      */
-    private $_notDeletedCondition;
+    private ?array $_notDeletedCondition = null;
 
     /**
      * @return array filter condition for 'soft-deleted' records.
@@ -161,7 +161,7 @@ class SoftDeleteQueryBehavior extends Behavior
      * Filters query to return only 'soft-deleted' records.
      * @return \yii\db\ActiveQueryInterface|static query instance.
      */
-    public function deleted()
+    public function deleted(): \yii\db\ActiveQueryInterface|static
     {
         return $this->addFilterCondition($this->getDeletedCondition());
     }
@@ -170,7 +170,7 @@ class SoftDeleteQueryBehavior extends Behavior
      * Filters query to return only not 'soft-deleted' records.
      * @return \yii\db\ActiveQueryInterface|static query instance.
      */
-    public function notDeleted()
+    public function notDeleted(): \yii\db\ActiveQueryInterface|static
     {
         return $this->addFilterCondition($this->getNotDeletedCondition());
     }
@@ -183,7 +183,7 @@ class SoftDeleteQueryBehavior extends Behavior
      * @param mixed $deleted filter value.
      * @return \yii\db\ActiveQueryInterface|static
      */
-    public function filterDeleted($deleted)
+    public function filterDeleted(mixed $deleted): \yii\db\ActiveQueryInterface|static
     {
         if ($deleted === '' || $deleted === null || $deleted === []) {
             return $this->notDeleted();
@@ -201,7 +201,7 @@ class SoftDeleteQueryBehavior extends Behavior
      * @param array $condition filter condition.
      * @return \yii\db\ActiveQueryInterface|static owner query instance.
      */
-    protected function addFilterCondition($condition)
+    protected function addFilterCondition($condition): \yii\db\ActiveQueryInterface|static
     {
         $condition = $this->normalizeFilterCondition($condition);
 
@@ -259,7 +259,7 @@ class SoftDeleteQueryBehavior extends Behavior
                 } elseif (!is_scalar($value) && is_callable($value)) {
                     $restoreValue = null;
                 } else {
-                    throw new InvalidConfigException('Unable to automatically determine not delete condition, "' . get_class($this) . '::$notDeletedCondition" should be explicitly set.');
+                    throw new InvalidConfigException('Unable to automatically determine not delete condition, "' . $this::class . '::$notDeletedCondition" should be explicitly set.');
                 }
 
                 $condition[$attribute] = $restoreValue;
@@ -278,9 +278,8 @@ class SoftDeleteQueryBehavior extends Behavior
 
     /**
      * Returns static instance for the model, which owner query is related to.
-     * @return \yii\db\BaseActiveRecord|SoftDeleteBehavior
      */
-    protected function getModelInstance()
+    protected function getModelInstance(): \yii\db\BaseActiveRecord|\yii2tech\ar\softdelete\SoftDeleteBehavior
     {
         return call_user_func([$this->owner->modelClass, 'instance']);
     }
@@ -297,12 +296,12 @@ class SoftDeleteQueryBehavior extends Behavior
             $alias = array_keys($fromTables)[0];
 
             foreach ($condition as $attribute => $value) {
-                if (is_numeric($attribute) || strpos($attribute, '.') !== false) {
+                if (is_numeric($attribute) || str_contains($attribute, '.')) {
                     continue;
                 }
 
                 unset($condition[$attribute]);
-                if (strpos($attribute, '[[') === false) {
+                if (!str_contains($attribute, '[[')) {
                     $attribute = '[[' . $attribute . ']]';
                 }
                 $attribute = $alias . '.' . $attribute;
